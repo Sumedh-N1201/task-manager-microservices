@@ -1,0 +1,15 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: eureka-server
+
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+  server:
+    # tighten this in production; keeps local dev responsive since we're not
+    # waiting through Eureka's default self-preservation delay
+    enable-self-preservation: false

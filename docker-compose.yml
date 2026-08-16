@@ -1,0 +1,96 @@
+services:
+
+  # --- Infrastructure -------------------------------------------------
+
+  user-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: user_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin1234
+    ports:
+      - "5433:5432"
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+
+  task-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: task_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin1234
+    ports:
+      - "5434:5432"
+    volumes:
+      - task_db_data:/var/lib/postgresql/data
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9092:9092"
+
+  # --- Service registry -------------------------------------------------
+
+  eureka-server:
+    build: ./eureka-server
+    ports:
+      - "8761:8761"
+
+  # --- Application services ----------------------------------------------
+
+  user-service:
+    build: ./user-service
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://user-db:5432/user_db
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      - user-db
+      - eureka-server
+    ports:
+      - "8081:8081"
+
+  task-service:
+    build: ./task-service
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://task-db:5432/task_db
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      - task-db
+      - kafka
+      - eureka-server
+    ports:
+      - "8082:8082"
+    # to run a 2nd instance for load-balancing practice, e.g.:
+    # docker compose up --scale task-service=2 -d
+    # (but then remove the fixed "8082:8082" host port mapping above first,
+    #  since two containers can't both bind host port 8082)
+
+  api-gateway:
+    build: ./api-gateway
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    depends_on:
+      - user-service
+      - task-service
+      - eureka-server
+    ports:
+      - "8080:8080"
+
+volumes:
+  user_db_data:
+  task_db_data:
