@@ -7,19 +7,21 @@ spring:
 
   cloud:
     gateway:
-      discovery:
-        locator:
-          enabled: true
-      routes:
-        - id: user-service
-          uri: lb://user-service
-          predicates:
-            - Path=/auth/**
+      server:
+        webflux:
+          discovery:
+            locator:
+              enabled: true
+          routes:
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/auth/**
 
-        - id: task-service
-          uri: lb://task-service
-          predicates:
-            - Path=/tasks/**
+            - id: task-service
+              uri: lb://task-service
+              predicates:
+                - Path=/tasks/**
 
 eureka:
   client:

@@ -32,7 +32,10 @@ public class JwtUtil {
     }
 
     public Long extractUserId(String token) {
-        return parse(token).get("userId", Long.class);
+        Object value = parse(token).get("userId");
+        if (value instanceof Long) return (Long) value;
+        if (value instanceof Number) return ((Number) value).longValue();
+        throw new IllegalArgumentException("userId claim is not a numeric type");
     }
 
     public boolean validateToken(String token) {
